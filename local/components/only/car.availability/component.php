@@ -16,7 +16,7 @@ if (!$userId) {
     return;
 }
 
-// Получаем параметры времени
+// Получаем параметры даты/времени
 $startTimeStr = trim($_GET['start'] ?? '');
 $endTimeStr = trim($_GET['end'] ?? '');
 
@@ -29,25 +29,33 @@ if (empty($endTimeStr)) {
     return;
 }
 
-// Парсим даты, форматы и Y-m-d, и d.m.Y
+// Парсим даты/время разных форматов
 $startTime = 
     DateTime::createFromFormat('Y-m-d H:i', $startTimeStr)
-    ?: DateTime::createFromFormat('Y-m-d H:i:s', $startTimeStr) 
-    ?: DateTime::createFromFormat('d.m.Y H:i', $startTimeStr)  
-    ?: DateTime::createFromFormat('d.m.Y H:i:s', $startTimeStr); 
+    ?: DateTime::createFromFormat('Y-m-d H:i:s', $startTimeStr)
+    ?: DateTime::createFromFormat('Y.m.d H:i', $startTimeStr)
+    ?: DateTime::createFromFormat('Y.m.d H:i:s', $startTimeStr)
+    ?: DateTime::createFromFormat('d.m.Y H:i', $startTimeStr)
+    ?: DateTime::createFromFormat('d.m.Y H:i:s', $startTimeStr)
+    ?: DateTime::createFromFormat('d-m-Y H:i', $startTimeStr)
+    ?: DateTime::createFromFormat('d-m-Y H:i:s', $startTimeStr);
 
 $endTime = 
     DateTime::createFromFormat('Y-m-d H:i', $endTimeStr)
     ?: DateTime::createFromFormat('Y-m-d H:i:s', $endTimeStr)
+    ?: DateTime::createFromFormat('Y.m.d H:i', $endTimeStr)
+    ?: DateTime::createFromFormat('Y.m.d H:i:s', $endTimeStr)
     ?: DateTime::createFromFormat('d.m.Y H:i', $endTimeStr)
-    ?: DateTime::createFromFormat('d.m.Y H:i:s', $endTimeStr);
+    ?: DateTime::createFromFormat('d.m.Y H:i:s', $endTimeStr)
+    ?: DateTime::createFromFormat('d-m-Y H:i', $endTimeStr)
+    ?: DateTime::createFromFormat('d-m-Y H:i:s', $endTimeStr);
 
 if (!$startTime || !$endTime || $startTime >= $endTime) {
     echo '<p style="color: red">Некорректный временной интервал</p>';
     return;
 }
 
-// Форматируем даты в формате, понятном Хайлоадблоку
+// Форматируем даты/время в формате, понятном Хайлоадблоку
 $startFormatted = $startTime->format('d.m.Y H:i:s');
 $endFormatted = $endTime->format('d.m.Y H:i:s');
 
