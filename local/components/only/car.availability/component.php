@@ -2,10 +2,23 @@
 
 if (!defined('B_PROLOG_INCLUDED') || B_PROLOG_INCLUDED !== true) die();
 
+function getIblockIdByCode($code) {
+    $res = CIBlock::GetList(
+        [],
+        ['CODE' => $code, 'ACTIVE' => 'Y'],
+        false,
+        ['ID']
+    );
+    if ($iblock = $res->Fetch()) {
+        return (int)$iblock['ID'];
+    }
+    die;
+}
+
 // Подключаем модули
 if (!CModule::IncludeModule('iblock') || !CModule::IncludeModule('highloadblock')) {
     echo '<p style="color: red">Модули iblock или highloadblock не подключены</p>';
-    return;
+    die;
 }
 
 global $USER;
@@ -13,7 +26,7 @@ $userId = (int)$USER->GetID();
 
 if (!$userId) {
     echo '<p style="color: red">Пользователь не авторизован</p>';
-    return;
+    die;
 }
 
 // Получаем параметры даты/времени
@@ -22,11 +35,11 @@ $endTimeStr = trim($_GET['end'] ?? '');
 
 if (empty($startTimeStr)) {
     echo '<p style="color: red">Не передан параметр "start"</p>';
-    return;
+    die;
 }
 if (empty($endTimeStr)) {
     echo '<p style="color: red">Не передан параметр "end"</p>';
-    return;
+    die;
 }
 
 // Парсим даты/время разных форматов
@@ -52,7 +65,7 @@ $endTime =
 
 if (!$startTime || !$endTime || $startTime >= $endTime) {
     echo '<p style="color: red">Некорректный временной интервал</p>';
-    return;
+    die;
 }
 
 // Форматируем даты/время в формате, понятном Хайлоадблоку
@@ -63,7 +76,18 @@ $endFormatted = $endTime->format('d.m.Y H:i:s');
 $user = CUser::GetByID($userId)->Fetch();
 if (!$user || !$user['WORK_POSITION']) {
     echo '<p style="color: red">У пользователя не указана должность</p>';
-    return;
+    die;
+}
+
+// Получаем ID инфоблоков по коду
+$IBLOCK_POSITIONS = getIblockIdByCode('positions');
+$IBLOCK_CARS = getIblockIdByCode('cars');                     
+$IBLOCK_DRIVERS = getIblockIdByCode('drivers');               
+$IBLOCK_CATEGORIES = getIblockIdByCode('comfort_categories'); 
+
+if (!$IBLOCK_POSITIONS || !$IBLOCK_CARS || !$IBLOCK_DRIVERS || !$IBLOCK_CATEGORIES) {
+    echo '<p style="color: red">Один из инфоблоков не найден</p>';
+    die;
 }
 
 // Получаем должность и доступные категории комфорта
@@ -71,17 +95,16 @@ $positionName = $user['WORK_POSITION'];
 $positionRes = CIBlockElement::GetList(
     [],
     [
-        'IBLOCK_ID' => 4,
+        'IBLOCK_ID' => $IBLOCK_POSITIONS,
         'NAME' => $positionName
     ],
     false,
-    ['nTopCount' => 1],
     ['PROPERTY_COMFORT_CATEGORIES']
 );
 
 if (!($position = $positionRes->Fetch())) {
     echo '<p style="color: red">Должность не найдена</p>';
-    return;
+    die;
 }
 
 $allowedCategoryIds = is_array($position['PROPERTY_COMFORT_CATEGORIES_VALUE'])
@@ -90,14 +113,14 @@ $allowedCategoryIds = is_array($position['PROPERTY_COMFORT_CATEGORIES_VALUE'])
 
 if (empty($allowedCategoryIds)) {
     echo '<p style="color: red">Нет доступных категорий комфорта</p>';
-    return;
+    die;
 }
 
 // Получаем автомобили
 $carRes = CIBlockElement::GetList(
     ['NAME' => 'ASC'],
     [
-        'IBLOCK_ID' => 6,
+        'IBLOCK_ID' => $IBLOCK_CARS,
         'PROPERTY_COMFORT_CATEGORY' => $allowedCategoryIds
     ],
     false,
@@ -123,7 +146,7 @@ if (!empty($driverIds)) {
     $driverRes = CIBlockElement::GetList(
         [],
         [
-            'IBLOCK_ID' => 5,
+            'IBLOCK_ID' => $IBLOCK_DRIVERS,
             'ID' => $driverIds
         ],
         false,
@@ -139,7 +162,7 @@ if (!empty($driverIds)) {
 $categoryRes = CIBlockElement::GetList(
     [],
     [
-        'IBLOCK_ID' => 3,
+        'IBLOCK_ID' => $IBLOCK_CATEGORIES,
         'ID' => $allowedCategoryIds
     ],
     false,
@@ -155,7 +178,7 @@ while ($cat = $categoryRes->Fetch()) {
 $hlblock = \Bitrix\Highloadblock\HighloadBlockTable::getById(1)->fetch();
 if (!$hlblock) {
     echo '<p style="color: red">Хайлоадблок не найден</p>';
-    return;
+    die;
 }
 
 $entity = \Bitrix\Highloadblock\HighloadBlockTable::compileEntity($hlblock);
@@ -193,6 +216,7 @@ foreach ($cars as $car) {
 // ШАБЛОН 
 if (!empty($arResult['ERROR'])) {
     echo '<p style="color: red">' . htmlspecialchars($arResult['ERROR']) . '</p>';
+    die;
 } else {
     echo '<p>Доступные автомобили с ' . htmlspecialchars($startTimeStr) . ' по ' . htmlspecialchars($endTimeStr) . ':</p>';
     if (count($availableCars) > 0) {
